@@ -1,0 +1,33 @@
+
+Install any linux flavor, copy your public ssh key to the machine and run
+
+nix run github:nix-community/nixos-anywhere -- --debug --flake .#hetzner user@ip
+
+sudo -i
+git clone https://github.com/pawsen/nix-config.git /tmp/nix-config
+git fetch --all && git reset --hard origin/main
+
+nix-shell -p disko --run "sudo disko --mode destroy,format,mount --flake /tmp/nix-config#smallbrain"
+nix-shell -p disko --run "disko --mode destroy,format,mount --flake /tmp/nix-config#smallbrain"
+
+mkdir -p /mnt/etc/nixos
+cp -r /tmp/nix-config/* /mnt/etc/nixos/
+
+nixos-install --flake /mnt/etc/nixos#smallbrain --no-root-password --no-channel-copy
+nixos-enter --root /mnt
+nixos-install --dry-run --flake /etc/nixos#smallbrain
+
+nixos-rebuild switch --flake /etc/nixos#smallbrain
+
+export NIX_CONFIG="experimental-features = nix-command flakes"
+
+nix --extra-experimental-features "nix-command" --extra-experimental-features "flakes" run github:nix-community/disko -- --mode format,mount --flake .#smallbrain --dry-run
+nix run github:nix-community/disko -- --mode format,mount --flake .#smallbrain --dry-run
+
+mount -o remount,size=10G,noatime /nix/.rw-store
+
+
+nix-shell -p disko
+disko --mode disko --flake .#smallbrain
+disko --mode destroy,format,mount --flake .#smallbrain
+nixos-install --flake .#smallbrain
