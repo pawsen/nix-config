@@ -41,10 +41,11 @@
     };
   };
 
-  # # Swapfile
-  # swapDevices = [
-  #   { device = "/swap/swapfile"; size = 2048; }
-  # ];
+  # Swapfile
+  swapDevices = [
+    # size in MB
+    { device = "/swap/swapfile"; size = 2048; }
+  ];
 
   boot = {
     # FIX, only for HP T620
