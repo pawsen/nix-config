@@ -5,6 +5,7 @@
   # Add this line when disks are plugged in
   # imports = [ ./disko-data.nix ];
   networking.hostName = "smallbrain";
+  time.timeZone = "Europe/Copenhagen";
 
   services.nginx = {
     enable = true;

@@ -20,10 +20,34 @@
     curl
     wget
     git
+    fd
+    ripgrep
 
     # podman-compose for docker-compose compatibility
     podman-compose
   ];
+
+  programs = {
+    neovim = {
+      enable = true;
+      vimAlias = true;
+      viAlias = true;
+      configure = {
+        packages.myPlugins = with pkgs.vimPlugins; {
+          start = [
+            vim-surround # Shortcuts for setting () {} etc.
+            vim-nix # nix highlight
+            fzf-vim # fuzzy finder through vim
+            nerdtree # file structure inside nvim
+            rainbow # Color parenthesis
+            vim-operator-user # map plugins to keybinds
+          ];
+          opt = [ ];
+        };
+      };
+    };
+
+  };
 
   # SSH access
   services.openssh = {
