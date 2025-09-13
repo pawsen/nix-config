@@ -12,4 +12,13 @@
     hashedPassword =
       "$6$eo/RTzQ5kY1Q1J1O$3BGkkqzT244t1rP13BlPFxC73h.kxvLNYaFdWfp2gPbRKkPXcv4iyGhf0QF.5o6XmaXXL68Nj1iOVh/7.Mcac0";
   };
+
+  programs.git = {
+    enable = true;
+    config = {
+      user.name = "Paw Møller";
+      user.email = "pawsen@gmail.com";
+    };
+  };
 }
+

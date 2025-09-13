@@ -21,7 +21,6 @@
             disko.nixosModules.disko
             agenix.nixosModules.default
             ./hosts/smallbrain/configuration.nix
-            ./hosts/smallbrain/disko.nix
             ./modules/base.nix
             ./modules/server.nix
             ./users/paw.nix
