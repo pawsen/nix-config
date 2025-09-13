@@ -21,20 +21,21 @@
   #      keyFile = "/root/hdd.key";
   #    };
   #  };
+  # Don't set a too low timeout for spinning disks/usb interfaces.
   environment.etc."crypttab".text = ''
-    cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 /root/hdd.key luks,nofail
+    cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 /root/hdd.key luks,nofail,x-systemd.device-timeout=30s
   '';
 
   fileSystems."/data" = {
     device = "/dev/mapper/cryptdata1";
     fsType = "btrfs";
-    options = [ "subvol=@data" "compress=zstd" "noatime" ];
+    options = [ "subvol=@data" "compress=zstd" "noatime" "nofail" ];
     neededForBoot = false;
   };
   fileSystems."/backups" = {
     device = "/dev/mapper/cryptdata1";
     fsType = "btrfs";
-    options = [ "subvol=@backups" "compress=zstd" "noatime" ];
+    options = [ "subvol=@backups" "compress=zstd" "noatime" "nofail" ];
     neededForBoot = false;
   };
 

@@ -54,8 +54,12 @@
     # The kernel switch into a graphics framebuffer, but it looks like screen goes black / never paints the tty.
     # t620’s G-Series chip can be driven by amdgpu, which tends to handle fbcon better than radeon.
     # blacklists radeon, forces amdgpu
-    kernelParams = [ "radeon.cik_support=0" "amdgpu.cik_support=1" ];
-    initrd.kernelModules = [ "amdgpu" ];
+    # kernelParams = [ "radeon.cik_support=0" "amdgpu.cik_support=1" ];
+    # initrd.kernelModules = [ "amdgpu" ];
+    kernelParams = [
+      "nomodeset"
+      "console=tty1"
+    ];
 
     # pure uefi. Don't use grub.
     loader.systemd-boot.enable = true;
