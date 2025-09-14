@@ -6,6 +6,8 @@
   imports =
     [ ./disko.nix ./../../modules/docker-apps.nix ./../../modules/torrent.nix
   ./../../modules/downloads.nix
+  ./../../modules/media.nix
+
     ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
@@ -43,6 +45,10 @@
   services.downloads = {
     enable = true;
     domain = "downloads.smallbrain";
+  };
+  services.media = {
+    enable = true;
+    domain = "media.smallbrain";
   };
 
   environment.systemPackages = with pkgs; [ cryptsetup ];
