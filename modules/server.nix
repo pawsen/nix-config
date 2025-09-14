@@ -16,9 +16,8 @@
     git
     fd
     ripgrep
-
-    # podman-compose for docker-compose compatibility
-    podman-compose
+    unixtools.netstat
+    dnsutils  # dig,
   ];
 
   programs = {

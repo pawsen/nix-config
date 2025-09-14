@@ -5,7 +5,7 @@
   # Add this line when disks are plugged in
   imports = [ ./disko.nix
               ./../../modules/docker-apps.nix
-              # ./../../modules/torrent.nix
+              ./../../modules/torrent.nix
             ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
@@ -35,6 +35,11 @@
       # optional environment variables
       environment = { };
     };
+  };
+
+  services.torrent = {
+    enable = true;
+    domain = "torrent.smallbrain";
   };
 
   environment.systemPackages = with pkgs; [ cryptsetup ];
