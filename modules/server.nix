@@ -16,11 +16,15 @@
     git
     fd
     ripgrep
+    tree
+    file
+    nix-index
     unixtools.netstat
     dnsutils  # dig,
   ];
 
   programs = {
+    command-not-found.enable = true;
     neovim = {
       enable = true;
       vimAlias = true;

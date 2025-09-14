@@ -3,10 +3,10 @@
 {
 
   # Add this line when disks are plugged in
-  imports = [ ./disko.nix
-              ./../../modules/docker-apps.nix
-              ./../../modules/torrent.nix
-            ];
+  imports =
+    [ ./disko.nix ./../../modules/docker-apps.nix ./../../modules/torrent.nix
+  ./../../modules/downloads.nix
+    ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
 
@@ -36,10 +36,13 @@
       environment = { };
     };
   };
-
   services.torrent = {
     enable = true;
     domain = "torrent.smallbrain";
+  };
+  services.downloads = {
+    enable = true;
+    domain = "downloads.smallbrain";
   };
 
   environment.systemPackages = with pkgs; [ cryptsetup ];
