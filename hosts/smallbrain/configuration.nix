@@ -3,10 +3,13 @@
 {
 
   # Add this line when disks are plugged in
-  imports =
-    [ ./disko.nix ./../../modules/docker-apps.nix ./../../modules/torrent.nix
-  ./../../modules/downloads.nix
-    ];
+  imports = [
+    ./disko.nix
+    ./../../modules/docker-apps.nix
+    ./../../modules/torrent.nix
+    ./../../modules/downloads.nix
+    ./../../modules/media.nix
+  ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
 
@@ -43,6 +46,10 @@
   services.downloads = {
     enable = true;
     domain = "downloads.smallbrain";
+  };
+  services.media = {
+    enable = true;
+    domain = "media.smallbrain";
   };
 
   environment.systemPackages = with pkgs; [ cryptsetup ];
@@ -92,13 +99,6 @@
   # networking.useNetworkd = true;
   networking.useDHCP = true;
 
-  services.nginx = {
-    enable = true;
-    recommendedProxySettings = true;
-    recommendedOptimisation = true;
-    recommendedGzipSettings = true;
-  };
-
   services.avahi = {
     enable = true;
     nssmdns4 = true;
@@ -108,11 +108,6 @@
       addresses = true; # publish this host’s addresses
       workstation = true; # publish as a workstation
     };
-  };
-
-  security.acme = {
-    acceptTerms = true;
-    defaults.email = "you@example.com";
   };
 
   system.stateVersion = "25.05"; # set at install time
