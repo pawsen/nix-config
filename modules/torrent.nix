@@ -1,19 +1,29 @@
 { config, pkgs, lib, ... }:
 
 let
+  cfg = config.services.torrent;
+  snippetPath = "/etc/caddy/snippets/torrent-auth";
+  siteAddr = if cfg.enableHTTPS then cfg.domain else "http://${cfg.domain}";
   torrentUser = "torrent";
-  htpasswdPath = "/etc/nginx/htpasswd/torrent";
-in {
+in
+{
   options.services.torrent = {
-    enable = lib.mkEnableOption "Torrent client (Transmission) service";
+    enable = lib.mkEnableOption "Transmission torrent service via Caddy";
+
     domain = lib.mkOption {
       type = lib.types.str;
       example = "torrent.smallbrain";
-      description = "Domain name for accessing the torrent web interface.";
+      description = "Domain name for the torrent web interface.";
+    };
+
+    enableHTTPS = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "If false, force HTTP only (tls off). If true, allow Caddy automatic HTTPS (ACME) for the domain.";
     };
   };
 
-  config = lib.mkIf config.services.torrent.enable {
+  config = lib.mkIf cfg.enable {
     users.groups.${torrentUser} = {};
     users.users.${torrentUser} = {
       isSystemUser = true;
@@ -23,9 +33,19 @@ in {
       group = torrentUser;
     };
 
-    # try users.users.transmission
-    systemd.tmpfiles.rules =
-      [ "d /data/torrents 0755 ${torrentUser} ${torrentUser} -" ];
+    systemd.tmpfiles.rules = [
+      "d /data/torrents 0755 ${torrentUser} ${torrentUser} -"
+      "d /etc/caddy/snippets 0750 root caddy -"
+    ];
+
+    # Decrypt and install Caddy auth snippet via agenix
+    age.secrets.torrent = {
+      file = ../secrets/torrent-auth.age;
+      path = snippetPath;
+      owner = "root";
+      group = "caddy";
+      mode = "0640";
+    };
 
     services.transmission = {
       enable = true;
@@ -33,41 +53,29 @@ in {
       user = torrentUser;
       group = torrentUser;
       home = "/var/lib/torrent";
-      openRPCPort = true;
-      openFirewall = true;
+
+      # RPC is proxied via Caddy; keep it local.
+      openRPCPort = lib.mkForce false;
+      openFirewall = lib.mkForce false;
+
       settings = {
         download-dir = "/data/torrents";
         incomplete-dir-enabled = false;
+
         rpc-bind-address = "127.0.0.1";
         rpc-port = 9091;
-        # controls which IP addresses can access the RPC
+
         rpc-whitelist-enabled = false;
-        # controls which hostnames are allowed in the Origin/Host header.
-        # If enabled. the torren.domian has to added to the rpc-host list
         rpc-host-whitelist-enabled = false;
-
-        # Uncomment to access directly through IP:9091
-        # rpc-bind-address = "0.0.0.0";
       };
     };
 
-    services.nginx = {
-      enable = true;
-      virtualHosts.${config.services.torrent.domain} = {
-        locations."/" = {
-          proxyPass = "http://127.0.0.1:9091";
-          extraConfig = ''
-            auth_basic "Restricted";
-            auth_basic_user_file ${htpasswdPath};
-
-            proxy_pass_header  X-Transmission-Session-Id;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-          '';
-        };
-      };
-    };
+    services.caddy.enable = true;
+    services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
+      basic_auth /* {
+        import ${snippetPath}
+      }
+      reverse_proxy 127.0.0.1:9091
+    '';
   };
 }

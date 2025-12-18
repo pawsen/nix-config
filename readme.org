@@ -36,4 +36,57 @@ disko --mode destroy,format,mount --flake .#smallbrain
 nixos-install --flake .#smallbrain
 
 
-docker build -t library-org:latest .
+docker build -t library:latest .
+
+* build and deploy to server
+#+begin_src sh
+nixos-rebuild switch --fast --flake .#smallbrain --build-host root@smallbrain.local  --target-host root@smallbrain.local
+#+end_src
+
+* Create basic auth password for Caddy
+
+#+begin_src sh
+nix run nixpkgs#caddy -- hash-password --plaintext 'PASSWORD'
+#+end_src
+
+Then add the hashed password to Caddy
+#+begin_src conf
+services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
+    root * /data/downloads
+    basic_auth /* {
+      USER $2a$14$e9F.2a/aH4fPa4bSrJCzYeB87Y55B4NFnkl6Uwc8yOqRrjMhtRise
+    }
+    file_server browse
+'';
+#+end_src
+
+If using agenix, add the desired =secret1.age= to =./secrets/secrets.nix= and encrypt the USER HASHED_PASSWORD line
+
+#+begin_src sh
+cd ./secrets
+agenix -e secret1.age
+#+end_src
+
+Then use the password in Caddy (OR add the whole =basic_auth= to the encrypted agenix file, if you don't want anyone to see what is protected)
+
+#+begin_src nix
+age.secrets.media = {
+    file = ../secrets/secret1.age;
+    path = snippetPath;
+    owner = "root";
+    group = "caddy";
+    mode = "0640";
+};
+
+services.caddy.enable = true;
+services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
+    # Protect only specific paths if desired; for “everything”, use `path /*`.
+    @protected path /*
+
+    basic_auth @protected {
+    import ${snippetPath}
+    }
+
+    reverse_proxy 127.0.0.1:8096
+'';
+#+end_src

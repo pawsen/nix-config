@@ -17,14 +17,14 @@
   services.dockerApps.apps = {
     ### DBKK LIBRARY ####
     # git clone --depth 1 https://github.com/pawsen/library-org.git /data/apps/library-org
-    # docker build -t library-org .
+    # docker build -t library .
     # docker run -p 5000:5000 \
     #   -v $(pwd)/uploads:/app/uploads \
     #   -v $(pwd)/database:/app/database \
     #   -v "$(pwd)/library.cfg:/app/library.cfg" \
-    #   library-org:latest
+    #   library:latest
     library = {
-      image = "library-org:latest";
+      image = "library:latest";
       containerPort = 5000;
       hostPort = 5001; # external port on the server
       domain = "dbkk.smallbrain";

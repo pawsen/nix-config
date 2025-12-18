@@ -1,100 +1,106 @@
 { config, lib, pkgs, ... }:
 
-with lib;
-
 let
+  inherit (lib)
+    mkOption mkEnableOption types concatStringsSep mapAttrsToList mkMerge
+    optionalString;
   cfg = config.services.dockerApps;
 in {
   options.services.dockerApps = {
-    enable = mkEnableOption "Declarative dockerized apps with nginx reverse proxy";
+    enable =
+      mkEnableOption "Declarative dockerized apps with Caddy reverse proxy";
 
     apps = mkOption {
       type = types.attrsOf (types.submodule ({
         options = {
-          # Docker image
           image = mkOption {
             type = types.str;
-            description = "Docker image to run (e.g., nginx:latest)";
+            description = "Docker image to run (e.g., ghcr.io/...:latest)";
           };
-
-          # Ports
           containerPort = mkOption {
             type = types.int;
-            description = "Port exposed inside the container";
+            description = "Container port exposed internally";
           };
           hostPort = mkOption {
             type = types.int;
             description = "Port exposed on the host";
           };
-
-          # Nginx / domain
           domain = mkOption {
             type = types.str;
-            description = "Domain/subdomain for nginx reverse proxy";
+            description = "Domain/subdomain for Caddy reverse proxy";
           };
           enableACME = mkOption {
             type = types.bool;
             default = false;
-            description = "Enable Let's Encrypt certificates (requires public DNS)";
+            description =
+              "Enable Let's Encrypt certificates (requires public DNS)";
           };
           addSSL = mkOption {
             type = types.bool;
             default = false;
-            description = "Enable SSL in nginx (requires ACME or custom certs)";
+            description =
+              "Enable HTTPS (Caddy automatic HTTPS when publicly reachable).";
           };
-
-          # Environment variables
           environment = mkOption {
             type = types.attrsOf types.str;
-            default = {};
+            default = { };
             description = "Environment variables for the container";
           };
-
-          # Volume mounts
           volumes = mkOption {
             type = types.listOf types.str;
-            default = [];
-            description = "List of volume mounts, e.g. [ \"/host/path:/container/path\" ]";
+            default = [ ];
+            description = "Volume mounts (e.g., /data/foo:/mnt/foo)";
           };
         };
       }));
-      default = {};
-      description = "Docker applications to run with reverse proxy";
+      default = { };
+      description = "Declarative docker apps";
     };
   };
 
-  config = mkIf cfg.enable {
-    # Make sure Docker is enabled
+  config = lib.mkIf cfg.enable {
     virtualisation.docker = {
       enable = true;
       storageDriver = "btrfs";
-      daemon.settings = {
-          # https://nixos.wiki/wiki/Docker#Changing_Docker_Daemon.27s_Other_settings_example
-          userland-proxy = false;
-          experimental = true;
-          metrics-addr = "0.0.0.0:9323";
-          ipv6 = true;
-          fixed-cidr-v6 = "fd00::/80";
-
-          # Changing Docker Daemon's Data Root
-          data-root = "/data/docker";
-      };
     };
 
-    # Systemd services for each app
+    virtualisation.docker.daemon.settings = {
+      userland-proxy = false;
+      experimental = true;
+      metrics-addr = "127.0.0.1:9323";
+      ipv6 = true;
+      fixed-cidr-v6 = "fd00::/80";
+      data-root = "/data/docker";
+    };
+
+    # Ensure /data is mounted before Docker
+    # systemd.services.docker.requires = [ "data.mount" ];
+    # systemd.services.docker.after = [ "data.mount" ];
+
+    # One systemd service per declarative container
     systemd.services = mkMerge (mapAttrsToList (name: app: {
       "docker-${name}" = {
         description = "Docker container ${name}";
-        after = [ "network.target" "docker.service" ];
+        after = [ "network.target" "data.mount" "docker.service" ];
+        requires = [ "data.mount" "docker.service" ];
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
           Type = "simple";
           Restart = "always";
+          # XXX: -p 127.0.0.1
+          # only listen to localhost, ie we need a reverse proxy to access the container
+          # if we want to access the container using a port number, use
+          # -p ${toString app.hostPort}:${toString app.containerPort} \
           ExecStart = ''
             ${pkgs.docker}/bin/docker run --rm \
               --name ${name} \
-              -p ${toString app.hostPort}:${toString app.containerPort} \
-              ${concatStringsSep " " (mapAttrsToList (k: v: "-e ${k}=${v}") app.environment)} \
+              -p 127.0.0.1:${toString app.hostPort}:${
+                toString app.containerPort
+              } \
+              ${
+                concatStringsSep " "
+                (mapAttrsToList (k: v: "-e ${k}=${v}") app.environment)
+              } \
               ${concatStringsSep " " (map (v: "-v ${v}") app.volumes)} \
               ${app.image}
           '';
@@ -103,37 +109,22 @@ in {
       };
     }) cfg.apps);
 
-    # Nginx reverse proxy for each app + default catch-all
-    services.nginx.enable = true;
-    services.nginx.virtualHosts = lib.mkMerge (
-      # 1. Docker app vhosts
-      (mapAttrsToList (_: app: {
-        "${app.domain}" = {
-          root = "/var/www/${app.domain}";
-          enableACME = app.enableACME;
-          addSSL = app.addSSL;
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${toString app.hostPort}";
-            extraConfig = ''
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-            '';
-          };
+    # Caddy reverse proxy
+    services.caddy.enable = true;
+    services.caddy.virtualHosts = lib.mkMerge (mapAttrsToList (_: app:
+      let
+        # Caddy v2: force HTTP by using an explicit http:// site address.
+        # If you later want HTTPS on a LAN without public DNS, use "tls internal" instead.
+        siteAddr = if app.addSSL || app.enableACME then
+          app.domain
+        else
+          "http://${app.domain}";
+      in {
+        "${siteAddr}" = {
+          extraConfig = ''
+            reverse_proxy 127.0.0.1:${toString app.hostPort}
+          '';
         };
-      }) cfg.apps)
-      # 2. Default catch-all vhost
-      ++ [
-        {
-          _ = {
-            root = "/var/www/default";
-            locations."/" = {
-              tryFiles = "$uri =404";
-            };
-          };
-        }
-      ]
-    );
+      }) cfg.apps);
   };
 }

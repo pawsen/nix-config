@@ -1,6 +1,8 @@
 { config, pkgs, ... }:
 
 {
+  # path to decryption key for age secrets
+  age.identityPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
   # Firewall
   networking.firewall.enable = true;
