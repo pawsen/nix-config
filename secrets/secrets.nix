@@ -7,6 +7,7 @@ let
   smallbrain = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO7Vx+X8z9/oMVAvcumDIIk7iSfL6nspehNetgCCLYvh root@smallbrain";
 in
 {
+  "hdd.key.age".publicKeys = [ paw smallbrain ];
   "torrent-auth.age".publicKeys = [ paw smallbrain ];
   "downloads-auth.age".publicKeys = [ paw smallbrain ];
   "media-auth.age".publicKeys = [ paw smallbrain ];

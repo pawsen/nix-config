@@ -65,9 +65,21 @@
   #    };
   #  };
 
+  systemd.tmpfiles.rules = [
+    "d /etc/keys 0700 root root -"
+  ];
+
+  age.secrets."hdd-key" = {
+    file = ../../secrets/hdd.key.age;
+    path = "/etc/keys/hdd.key";
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
   # Don't set a too low timeout for spinning disks/usb interfaces.
   environment.etc."crypttab".text = ''
-    cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 /root/hdd.key nofail
+    cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 ${config.age.secrets."hdd-key".path} nofail
   '';
   fileSystems."/data" = {
     device = "/dev/mapper/cryptdata1";
