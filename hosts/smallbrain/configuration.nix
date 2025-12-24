@@ -76,7 +76,6 @@
     group = "root";
     mode = "0400";
   };
-
   # Don't set a too low timeout for spinning disks/usb interfaces.
   environment.etc."crypttab".text = ''
     cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 ${config.age.secrets."hdd-key".path} nofail
@@ -120,6 +119,27 @@
       addresses = true; # publish this host’s addresses
       workstation = true; # publish as a workstation
     };
+  };
+
+  age.secrets.tailscaleAuthKey = {
+    file = ../../secrets/tailscale-auth.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+  services.tailscale = {
+    enable = true;
+    # Enables sysctls needed for exit node / routing
+    useRoutingFeatures = "server";
+
+    # Use the agenix-decrypted secret at activation/runtime
+    authKeyFile = config.age.secrets.tailscaleAuthKey.path;
+
+    # Make it an exit node (your “route traffic through this server” requirement)
+    extraUpFlags = [
+      "--advertise-exit-node"
+      "--accept-dns=true"   # optional; MagicDNS
+    ];
   };
 
   system.stateVersion = "25.05"; # set at install time

@@ -11,4 +11,5 @@ in
   "torrent-auth.age".publicKeys = [ paw smallbrain ];
   "downloads-auth.age".publicKeys = [ paw smallbrain ];
   "media-auth.age".publicKeys = [ paw smallbrain ];
+  "tailscale-auth.age".publicKeys = [ paw smallbrain ];
 }
