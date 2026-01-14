@@ -29,17 +29,6 @@ in {
             type = types.str;
             description = "Domain/subdomain for Caddy reverse proxy";
           };
-          enableACME = mkOption {
-            type = types.bool;
-            default = false;
-            description =
-              "Enable Let's Encrypt certificates (requires public DNS)";
-          };
-          addSSL = mkOption {
-            type = types.bool;
-            default = false;
-            description =
-              "Enable HTTPS (Caddy automatic HTTPS when publicly reachable).";
           };
           environment = mkOption {
             type = types.attrsOf types.str;
@@ -113,12 +102,8 @@ in {
     services.caddy.enable = true;
     services.caddy.virtualHosts = lib.mkMerge (mapAttrsToList (_: app:
       let
-        # Caddy v2: force HTTP by using an explicit http:// site address.
-        # If you later want HTTPS on a LAN without public DNS, use "tls internal" instead.
-        siteAddr = if app.addSSL || app.enableACME then
-          app.domain
-        else
-          "http://${app.domain}";
+        siteAddr = app.domain;
+
       in {
         "${siteAddr}" = {
           extraConfig = ''

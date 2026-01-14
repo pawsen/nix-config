@@ -3,9 +3,8 @@
 let
   cfg = config.services.media;
   snippetPath = "/etc/caddy/snippets/media-auth";
-  siteAddr = if cfg.enableHTTPS then cfg.domain else "http://${cfg.domain}";
+  siteAddr = cfg.domain;
   jellyfinDataDir = "/data/jellyfin";
-
 in {
   options.services.media = {
     enable = lib.mkEnableOption "media player";
@@ -20,7 +19,6 @@ in {
       default = false;
       description = "Enable Caddy automatic HTTPS (ACME).";
     };
-
   };
 
   config = lib.mkIf cfg.enable {
@@ -33,16 +31,20 @@ in {
       dataDir = jellyfinDataDir;
     };
 
-    # Ensure /data is mounted before services that depend on it.
+    systemd.tmpfiles.rules = [ "d /etc/caddy/snippets 0750 root caddy -" ];
+    # jellyfin does not automatically create a custom data dir
+    # only create datadir if /data is mounted
     systemd.services.jellyfin = {
       requires = [ "data.mount" ];
       after = [ "data.mount" ];
+      serviceConfig = {
+        RequiresMountsFor = [ "/data" ];
+        ConditionPathIsMountPoint = "/data";
+        ExecStartPre = [
+          "/run/current-system/sw/bin/install -d -m 0755 -o jellyfin -g jellyfin ${jellyfinDataDir}"
+        ];
+      };
     };
-    # jellyfin does not automatically create a custom data dir
-    systemd.tmpfiles.rules = [
-      "d ${jellyfinDataDir} 0755 jellyfin jellyfin -"
-      "d /etc/caddy/snippets 0750 root caddy -"
-    ];
 
     # Decrypt and install Caddy auth snippet via agenix
     age.secrets.media = {

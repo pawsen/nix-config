@@ -1,6 +1,4 @@
-{ config, pkgs, ... }:
-
-{
+{ config, pkgs, lib, ... }:
 
   # Add this line when disks are plugged in
   imports = [
@@ -28,8 +26,6 @@
       containerPort = 5000;
       hostPort = 5001; # external port on the server
       domain = "dbkk.smallbrain";
-      enableACME = false; # set true if public + ACME
-      addSSL = false; # set true if public + SSL
       volumes = [
         "/data/apps/library-org/database:/app/database"
         "/data/apps/library-org/uploads:/app/uploads"
@@ -51,7 +47,28 @@
     enable = true;
     domain = "media.smallbrain";
   };
+  # Home page
+  services.caddy.enable = true;
+  # caddy validate --config /etc/caddy/caddy_config --adapter caddyfile
+  # caddy adapt --config /etc/caddy/caddy_config  --adapter caddyfile | jq
+  # Ensure this is appended by lib.mkAfter
+  services.caddy.virtualHosts.${domain}.extraConfig = lib.mkAfter ''
+    # tailscale cert smallbrain.bleak-mine.ts.net
+    # Move certs to caddy readable place
+    # install -d -o caddy -g caddy -m 0750 /var/lib/caddy/tailscale-certs
+    # install -o caddy -g caddy -m 0440 /var/lib/tailscale/certs/smallbrain.bleak-mine.ts.net.crt \
+    #    /var/lib/caddy/tailscale-certs/smallbrain.bleak-mine.ts.net.crt
+    # install -o caddy -g caddy -m 0440 /var/lib/tailscale/certs/smallbrain.bleak-mine.ts.net.key \
+    #    /var/lib/caddy/tailscale-certs/smallbrain.bleak-mine.ts.net.key
 
+    # Use the Tailscale-provided cert/key
+    tls /var/lib/caddy/tailscale-certs/${domain}.crt /var/lib/caddy/tailscale-certs/${domain}.key
+
+    handle {
+      root * /data/www/
+      file_server
+    }
+  '';
   environment.systemPackages = with pkgs; [ cryptsetup ];
 
   # This fails because /root (where the key is stored) is not mounted at stage 1 of the boot
@@ -65,9 +82,7 @@
   #    };
   #  };
 
-  systemd.tmpfiles.rules = [
-    "d /etc/keys 0700 root root -"
-  ];
+  systemd.tmpfiles.rules = [ "d /etc/keys 0700 root root -" ];
 
   age.secrets."hdd-key" = {
     file = ../../secrets/hdd.key.age;
@@ -78,7 +93,9 @@
   };
   # Don't set a too low timeout for spinning disks/usb interfaces.
   environment.etc."crypttab".text = ''
-    cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 ${config.age.secrets."hdd-key".path} nofail
+    cryptdata1 UUID=8b467c74-5538-431b-a507-2b8dfb858ac9 ${
+      config.age.secrets."hdd-key".path
+    } nofail
   '';
   fileSystems."/data" = {
     device = "/dev/mapper/cryptdata1";
@@ -138,7 +155,7 @@
     # Make it an exit node (your “route traffic through this server” requirement)
     extraUpFlags = [
       "--advertise-exit-node"
-      "--accept-dns=true"   # optional; MagicDNS
+      "--accept-dns=true" # optional; MagicDNS
     ];
   };
 

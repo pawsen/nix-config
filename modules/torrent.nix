@@ -3,10 +3,11 @@
 let
   cfg = config.services.torrent;
   snippetPath = "/etc/caddy/snippets/torrent-auth";
-  siteAddr = if cfg.enableHTTPS then cfg.domain else "http://${cfg.domain}";
+  # siteAddr = if cfg.enableHTTPS then cfg.domain else "http://${cfg.domain}";
+  siteAddr = cfg.domain;
+
   torrentUser = "torrent";
-in
-{
+in {
   options.services.torrent = {
     enable = lib.mkEnableOption "Transmission torrent service via Caddy";
 
@@ -15,16 +16,16 @@ in
       example = "torrent.smallbrain";
       description = "Domain name for the torrent web interface.";
     };
-
     enableHTTPS = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "If false, force HTTP only (tls off). If true, allow Caddy automatic HTTPS (ACME) for the domain.";
+      description =
+        "If false, force HTTP only (tls off). If true, allow Caddy automatic HTTPS (ACME) for the domain.";
     };
   };
 
   config = lib.mkIf cfg.enable {
-    users.groups.${torrentUser} = {};
+    users.groups.${torrentUser} = { };
     users.users.${torrentUser} = {
       isSystemUser = true;
       description = "Transmission daemon user";
@@ -34,9 +35,29 @@ in
     };
 
     systemd.tmpfiles.rules = [
-      "d /data/torrents 0755 ${torrentUser} ${torrentUser} -"
+      # systemd.tmpfiles.rules is evaluated by systemd-tmpfiles --create during boot/activation and
+      # it is not mount-aware.
+      # "d /data/torrents 0755 ${torrentUser} ${torrentUser} -"
       "d /etc/caddy/snippets 0750 root caddy -"
     ];
+
+    # only create /data/torrent if /data is mounted
+    systemd.services.transmission = {
+      requires = [ "data.mount" ];
+      after = [ "data.mount" ];
+
+      serviceConfig = {
+        # Ensure systemd pulls the mount in when starting transmission
+        RequiresMountsFor = [ "/data" ];
+        # Hard stop: do nothing unless /data is actually mounted
+        ConditionPathIsMountPoint = "/data";
+
+        # Create /data/torrent
+        ExecStartPre = [
+          "/run/current-system/sw/bin/install -d -m 0755 -o ${torrentUser} -g ${torrentUser} /data/torrents"
+        ];
+      };
+    };
 
     # Decrypt and install Caddy auth snippet via agenix
     age.secrets.torrent = {
