@@ -85,6 +85,8 @@ in {
 
         rpc-bind-address = "127.0.0.1";
         rpc-port = 9091;
+        # delete rpc-url if using a subdomain like torrent.url
+        rpc-url = "/torrent/";
 
         rpc-whitelist-enabled = false;
         rpc-host-whitelist-enabled = false;
@@ -93,10 +95,15 @@ in {
 
     services.caddy.enable = true;
     services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
-      basic_auth /* {
-        import ${snippetPath}
+      @torrentNoSlash path /torrent
+      redir @torrentNoSlash /torrent/ 308
+
+      handle /torrent/* {
+          basic_auth * {
+              import ${snippetPath}
+          }
+          reverse_proxy 127.0.0.1:9091
       }
-      reverse_proxy 127.0.0.1:9091
     '';
   };
 }

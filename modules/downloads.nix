@@ -162,18 +162,21 @@ in {
     systemd.services.caddy = lib.mkIf cfg.requireDataForCaddy {
       requires = [ "data.mount" ];
       after = [ "data.mount" ];
-      serviceConfig = {
-        RequiresMountsFor = [ "/data" ];
-        ConditionPathIsMountPoint = "/data";
-      };
     };
 
     services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
-      root * /data/downloads
-      basic_auth /* {
-        import ${snippetPath}
+      # Make /downloads redirect to /downloads/
+      @downloadsNoSlash path /downloads
+      redir @downloadsNoSlash /downloads/ 308
+
+      handle_path /downloads/* {
+          basic_auth {
+          import ${snippetPath}
+          }
+
+          root * /data/downloads
+          file_server browse
       }
-      file_server browse
     '';
   };
 }

@@ -29,6 +29,10 @@ in {
             type = types.str;
             description = "Domain/subdomain for Caddy reverse proxy";
           };
+          path = mkOption {
+            type = types.str;
+            description = "Path, ie access the app at domain/path";
+            default = "/";
           };
           environment = mkOption {
             type = types.attrsOf types.str;
@@ -103,11 +107,18 @@ in {
     services.caddy.virtualHosts = lib.mkMerge (mapAttrsToList (_: app:
       let
         siteAddr = app.domain;
+        sitePath = if app.path == "" then "/" else app.path;
 
       in {
         "${siteAddr}" = {
           extraConfig = ''
-            reverse_proxy 127.0.0.1:${toString app.hostPort}
+            @m path ${sitePath}
+            redir @m ${sitePath}/ 308
+
+              handle ${sitePath}/* {
+                reverse_proxy 127.0.0.1:${toString app.hostPort} {
+              }
+            }
           '';
         };
       }) cfg.apps);

@@ -1,4 +1,6 @@
 { config, pkgs, lib, ... }:
+let domain = "smallbrain.bleak-mine.ts.net";
+in {
 
   # Add this line when disks are plugged in
   imports = [
@@ -25,32 +27,41 @@
       image = "library:latest";
       containerPort = 5000;
       hostPort = 5001; # external port on the server
-      domain = "dbkk.smallbrain";
+      domain = "${domain}";
+      path = "/apps/dbkk";
       volumes = [
         "/data/apps/library-org/database:/app/database"
         "/data/apps/library-org/uploads:/app/uploads"
         "/data/apps/library-org/library.cfg:/app/library.cfg"
       ];
       # optional environment variables
-      environment = { };
+      environment = { SCRIPT_NAME = "/apps/dbkk"; };
     };
   };
   services.torrent = {
     enable = true;
-    domain = "torrent.smallbrain";
+    domain = domain;
+    # domain = "torrent.smallbrain";
   };
   services.downloads = {
     enable = true;
-    domain = "downloads.smallbrain";
+    domain = domain;
+    # domain = "downloads.smallbrain";
   };
   services.media = {
     enable = true;
-    domain = "media.smallbrain";
+    domain = domain;
+    # domain = "torrent.smallbrain";
   };
   # Home page
   services.caddy.enable = true;
   # caddy validate --config /etc/caddy/caddy_config --adapter caddyfile
   # caddy adapt --config /etc/caddy/caddy_config  --adapter caddyfile | jq
+  services.caddy.globalConfig = ''
+    # free port 80 and 443 for tailscale funnel
+    http_port 4443
+    https_port 4443
+  '';
   # Ensure this is appended by lib.mkAfter
   services.caddy.virtualHosts.${domain}.extraConfig = lib.mkAfter ''
     # tailscale cert smallbrain.bleak-mine.ts.net
@@ -64,6 +75,7 @@
     # Use the Tailscale-provided cert/key
     tls /var/lib/caddy/tailscale-certs/${domain}.crt /var/lib/caddy/tailscale-certs/${domain}.key
 
+    # default web page
     handle {
       root * /data/www/
       file_server

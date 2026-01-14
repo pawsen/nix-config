@@ -57,7 +57,12 @@ in {
 
     services.caddy.enable = true;
     services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
-      reverse_proxy 127.0.0.1:8096
+      @mediaNoSlash path /media
+      redir @mediaNoSlash /media/ 308
+
+      handle /media/* {
+          reverse_proxy 127.0.0.1:8096
+      }
     '';
   };
 }
