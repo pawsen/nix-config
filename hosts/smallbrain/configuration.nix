@@ -9,10 +9,20 @@ in {
     ./../../modules/torrent.nix
     ./../../modules/downloads.nix
     ./../../modules/media.nix
+    ./../../modules/backup-btrbk.nix
   ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
 
+  services.backup-btrbk = {
+    enable = true;
+    targetDir = "/data/backup/btrbk";
+    # the module will create a new dir, targetDir/lion, etc, for each client
+    clients = {
+      lion =
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDp4dCTuHEi4m59sjzgWqeGeEXa3nYIhn/WnILvDtdOS btrbk@lion";
+    };
+  };
   services.dockerApps.enable = true;
   services.dockerApps.apps = {
     ### DBKK LIBRARY ####
