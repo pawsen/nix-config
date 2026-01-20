@@ -1,3 +1,5 @@
+# nixos-rebuild switch --fast --flake .#smallbrain --build-host root@smallbrain.bleak-mine.ts.net  --target-host root@smallbrain.bleak-mine.ts.net
+
 { config, pkgs, lib, ... }:
 let domain = "smallbrain.bleak-mine.ts.net";
 in {
@@ -10,6 +12,7 @@ in {
     ./../../modules/downloads.nix
     ./../../modules/media.nix
     ./../../modules/backup-btrbk.nix
+    ./../../modules/monitoring.nix
   ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
@@ -22,6 +25,11 @@ in {
       lion =
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDp4dCTuHEi4m59sjzgWqeGeEXa3nYIhn/WnILvDtdOS btrbk@lion";
     };
+  };
+  # grafana and prometheus
+  services.monitoring = {
+    enable = true;
+    domain = "${domain}";
   };
   services.dockerApps.enable = true;
   services.dockerApps.apps = {
