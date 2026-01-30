@@ -31,20 +31,11 @@ in {
       dataDir = jellyfinDataDir;
     };
 
-    systemd.tmpfiles.rules = [ "d /etc/caddy/snippets 0750 root caddy -" ];
-    # jellyfin does not automatically create a custom data dir
-    # only create datadir if /data is mounted
-    systemd.services.jellyfin = {
-      requires = [ "data.mount" ];
-      after = [ "data.mount" ];
-      serviceConfig = {
-        RequiresMountsFor = [ "/data" ];
-        ConditionPathIsMountPoint = "/data";
-        ExecStartPre = [
-          "/run/current-system/sw/bin/install -d -m 0755 -o jellyfin -g jellyfin ${jellyfinDataDir}"
-        ];
-      };
-    };
+    systemd.tmpfiles.rules = [
+      "d /etc/caddy/snippets 0750 root caddy -"
+      # jellyfin does not automatically create a custom data dir
+      "d ${jellyfinDataDir} 0755 jellyfin jellyfin"
+    ];
 
     # Decrypt and install Caddy auth snippet via agenix
     age.secrets.media = {

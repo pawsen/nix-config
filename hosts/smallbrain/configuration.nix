@@ -12,11 +12,13 @@ in {
     ./../../modules/downloads.nix
     ./../../modules/media.nix
     ./../../modules/backup-btrbk.nix
+    ./../../modules/backup-borg.nix
     ./../../modules/monitoring.nix
   ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
 
+  # backups
   services.backup-btrbk = {
     enable = true;
     targetDir = "/data/backup/btrbk";
@@ -26,6 +28,15 @@ in {
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDp4dCTuHEi4m59sjzgWqeGeEXa3nYIhn/WnILvDtdOS btrbk@lion";
     };
   };
+  services.backup-borg = {
+    enable = true;
+    targetDir = "/data/backup/borg";
+    clients = {
+      pi4 =
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHZ9U9wUVY2s+2rqn4zShXwaHvbJKUVjgiz8rqYcFlne pi@pi4";
+    };
+  };
+
   # grafana and prometheus
   services.monitoring = {
     enable = true;
@@ -79,6 +90,11 @@ in {
     # free port 80 and 443 for tailscale funnel
     http_port 4443
     https_port 4443
+
+    #
+    servers {
+      trusted_proxies static 127.0.0.1 ::1
+    }
   '';
   # Ensure this is appended by lib.mkAfter
   services.caddy.virtualHosts.${domain}.extraConfig = lib.mkAfter ''
@@ -99,6 +115,17 @@ in {
       file_server
     }
   '';
+
+  # 1) Automatically GC old store paths
+  nix.gc = {
+    automatic = true;
+    dates = "weekly"; # or "daily"
+    options = "--delete-older-than 14d"; # tune
+  };
+
+  # 2) Keep only the last N system profiles (limits rollback generations)
+  boot.loader.systemd-boot.configurationLimit = 5; # for systemd-boot
+
   environment.systemPackages = with pkgs; [ cryptsetup ];
 
   # This fails because /root (where the key is stored) is not mounted at stage 1 of the boot

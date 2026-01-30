@@ -18,6 +18,7 @@
     git
     fd
     ripgrep
+    jq
     tree
     file
     nix-index

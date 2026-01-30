@@ -69,14 +69,6 @@ in {
         If /data is not mounted, nothing is created under /data and the bind mounts are skipped.
       '';
     };
-
-    # Optional: if true, do not start Caddy unless /data is mounted.
-    # If false, Caddy runs but the /downloads page may error or be empty when /data is absent.
-    requireDataForCaddy = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Gate Caddy startup on /data being mounted.";
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -106,9 +98,6 @@ in {
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-
-        # Hard safety guard: do not create anything unless /data is a real mount.
-        ConditionPathIsMountPoint = "/data";
       };
 
       script = ''
@@ -128,7 +117,7 @@ in {
     };
 
     ##########################################################################
-    # Bind mounts (systemd.mounts), skipped unless /data is mounted.
+    # Bind mounts (systemd.mounts)
     ##########################################################################
     systemd.mounts = map (b: {
       what = b.from;
@@ -139,17 +128,9 @@ in {
       wantedBy = [ "multi-user.target" ];
 
       unitConfig = {
-        # Do not even attempt the bind mount unless /data is mounted.
-        ConditionPathIsMountPoint = "/data";
-
         # Ensure ordering and that dirs exist first.
         Requires = [ "data.mount" "downloads-create-data-dirs.service" ];
         After = [ "data.mount" "downloads-create-data-dirs.service" ];
-      };
-
-      mountConfig = {
-        # Path-based dependency; ensures /data is pulled in.
-        RequiresMountsFor = [ "/data" ];
       };
     }) binds;
 
@@ -157,26 +138,30 @@ in {
     # Caddy configuration
     ##########################################################################
     services.caddy.enable = true;
-
-    # only run Caddy when /data is mounted: gate the service.
-    systemd.services.caddy = lib.mkIf cfg.requireDataForCaddy {
-      requires = [ "data.mount" ];
-      after = [ "data.mount" ];
-    };
-
     services.caddy.virtualHosts.${siteAddr}.extraConfig = ''
-      # Make /downloads redirect to /downloads/
-      @downloadsNoSlash path /downloads
-      redir @downloadsNoSlash /downloads/ 308
+        log {
+            output file /var/log/caddy/${siteAddr}-downloads.log
+            format json
+            level INFO
+        }
 
-      handle_path /downloads/* {
-          basic_auth {
-          import ${snippetPath}
-          }
+        # Make /downloads redirect to /downloads/
+        @downloadsNoSlash path /downloads
+        redir @downloadsNoSlash /downloads/ 308
+
+        # Trusted networks: LAN + Tailscale
+        @untrusted {
+            header Tailscale-Funnel-Request ?1
+            not client_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fd7a:115c:a1e0::/48
+        }
+        handle_path /downloads/* {
+          # basic_auth @untrusted {
+          #     import ${snippetPath}
+          # }
 
           root * /data/downloads
           file_server browse
-      }
+        }
     '';
   };
 }
