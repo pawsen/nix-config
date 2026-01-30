@@ -149,11 +149,6 @@ in {
         @downloadsNoSlash path /downloads
         redir @downloadsNoSlash /downloads/ 308
 
-        # Trusted networks: LAN + Tailscale
-        @untrusted {
-            header Tailscale-Funnel-Request ?1
-            not client_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fd7a:115c:a1e0::/48
-        }
         handle_path /downloads/* {
           # basic_auth @untrusted {
           #     import ${snippetPath}

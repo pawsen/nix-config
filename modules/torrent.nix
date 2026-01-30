@@ -98,9 +98,8 @@ in {
       @torrentNoSlash path /torrent
       redir @torrentNoSlash /torrent/ 308
 
-      @not_tailscale not remote_ip 100.64.0.0/10
       handle /torrent/* {
-          basic_auth @not_tailscale {
+          basic_auth @untrusted {
               import ${snippetPath}
           }
           reverse_proxy 127.0.0.1:9091

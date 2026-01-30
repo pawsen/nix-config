@@ -91,13 +91,20 @@ in {
     http_port 4443
     https_port 4443
 
-    #
+    # Tailscale funnel proxy though 127.0.0.1. Caddy has to trust localhost for it to do basic auth
+    # on client_ip(the proxied ip, remote_ip will be 127.0.0.1 due to the proxy)
     servers {
       trusted_proxies static 127.0.0.1 ::1
     }
   '';
   # Ensure this is appended by lib.mkAfter
   services.caddy.virtualHosts.${domain}.extraConfig = lib.mkAfter ''
+    # Trusted networks: LAN + Tailscale
+    @untrusted {
+        header Tailscale-Funnel-Request ?1
+        not client_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fd7a:115c:a1e0::/48
+    }
+
     # tailscale cert smallbrain.bleak-mine.ts.net
     # Move certs to caddy readable place
     # install -d -o caddy -g caddy -m 0750 /var/lib/caddy/tailscale-certs

@@ -103,7 +103,7 @@ in {
       redir @promNoSlash ${promPrefixSlash} 308
 
       handle ${promPrefix}/* {
-          basic_auth * {
+          basic_auth @untrusted {
               import ${snippetPath}
           }
           reverse_proxy 127.0.0.1:${toString config.services.prometheus.port}
@@ -111,9 +111,8 @@ in {
 
       @grafNoSlash path ${grafPrefix}
       redir @grafNoSlash ${grafPrefixSlash} 308
-
       handle ${grafPrefix}/* {
-          basic_auth * {
+          basic_auth @untrusted {
               import ${snippetPath}
           }
           reverse_proxy 127.0.0.1:${
