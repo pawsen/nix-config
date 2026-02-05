@@ -37,6 +37,13 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    # move prometheus data dir to /data/lib/prometheus
+    fileSystems."/var/lib/prometheus2" = {
+        device = "/data/lib/prometheus2";
+        fsType = "none";
+        options = [ "bind" ];
+    };
+
     services.prometheus = {
       enable = true;
       listenAddress = "127.0.0.1";
@@ -62,6 +69,8 @@ in {
       extraFlags = [
         "--web.external-url=https://${siteAddr}${promPrefixSlash}"
         "--web.route-prefix=${promPrefixSlash}"
+        # enable admin API
+        "--web.enable-admin-api"
       ];
     };
 

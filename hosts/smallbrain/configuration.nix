@@ -14,6 +14,7 @@ in {
     ./../../modules/backup-btrbk.nix
     ./../../modules/backup-borg.nix
     ./../../modules/monitoring.nix
+    ./../../modules/lfhs-rtl433.nix
   ];
   networking.hostName = "smallbrain";
   time.timeZone = "Europe/Copenhagen";
@@ -41,6 +42,12 @@ in {
   services.monitoring = {
     enable = true;
     domain = "${domain}";
+  };
+  services.lfhsRtl433 = {
+    enable = true;
+    domain = "${domain}";
+    path = "/lfhs";
+    devRoot = "/srv/lfhs-rtl433";
   };
   services.dockerApps.enable = true;
   services.dockerApps.apps = {
